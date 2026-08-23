@@ -3,4 +3,4 @@ window.API_BASE = (window.location.hostname === "localhost" || window.location.h
   ? "http://localhost:4000"
   : "";
 
-window.GOOGLE_CLIENT_ID = window.GOOGLE_CLIENT_ID || "238544039516-sn7ppdg6efphe98qeov1reqi9k97grj4.apps.googleusercontent.com";
+window.GOOGLE_CLIENT_ID = window.GOOGLE_CLIENT_ID || "283432634300-dttfrd4o0doimka7cmgjuaivf4ioj58g.apps.googleusercontent.com";
