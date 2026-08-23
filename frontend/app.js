@@ -662,43 +662,58 @@ async function selectJob(job, cardEl) {
 
       ${ownMatchHtml}
 
-      <div class="section-label" style="margin-bottom:12px;">👥 Network Talent Pool (Ranked Candidates)</div>
+      ${(() => {
+        // Only show the full talent pool if:
+        // 1. No one is logged in (anonymous browsing), OR
+        // 2. The logged-in user works at the hiring company (recruiter view)
+        const isRecruiter = !currentUser || (currentUser.company && job.companyName &&
+          currentUser.company.trim().toLowerCase() === job.companyName.trim().toLowerCase());
+        if (!isRecruiter) return "";
+        return `<div class="section-label" style="margin-bottom:12px;">👥 Network Talent Pool (Ranked Candidates)</div>`;
+      })()}
     `;
 
-    for (const c of candidates) {
-      const pct = Math.round((c.skillCoverage || 0) * 100);
-      const hopVal = unwrapNum(c.closestHop);
-      let hopClass = "hop-multi";
-      let hopText = `${hopVal} hops away`;
+    // Only append candidate rows for recruiters (or anonymous users)
+    const isRecruiterView = !currentUser || (currentUser.company && job.companyName &&
+      currentUser.company.trim().toLowerCase() === job.companyName.trim().toLowerCase());
 
-      if (c.closestHop === null || c.closestHop === undefined) {
-        hopClass = "hop-multi";
-        hopText = "No path in graph";
-      } else if (hopVal === 0) {
-        hopClass = "inside";
-        hopText = "Already inside";
-      } else if (hopVal === 1) {
-        hopClass = "hop-1";
-        hopText = "1 Hop away";
-      }
+    if (isRecruiterView) {
+      for (const c of candidates) {
+        const pct = Math.round((c.skillCoverage || 0) * 100);
+        const hopVal = unwrapNum(c.closestHop);
+        let hopClass = "hop-multi";
+        let hopText = `${hopVal} hops away`;
 
-      const row = el(
-        "div",
-        "candidate-row",
-        `<div>
-           <div class="candidate-name">${c.name} ${currentUser && c.personId === currentUser.id ? '<span style="color:#00b4d8; font-size:0.75rem; font-weight:bold;">(You)</span>' : ""}</div>
-           <div class="candidate-sub">${c.headline || ""} · Skills: ${(c.matchedSkills || []).join(", ")}</div>
-         </div>
-         <div style="display:flex; align-items:center; gap:16px;">
-           <div style="text-align:right;">
-             <div style="font-family:var(--font-mono); font-size:0.8rem; color:var(--accent-cyan); font-weight:600;">${pct}% Fit</div>
-             <div class="coverage-bar" style="margin-top:4px;"><div class="coverage-fill" style="width:${pct}%"></div></div>
+        if (c.closestHop === null || c.closestHop === undefined) {
+          hopClass = "hop-multi";
+          hopText = "No path in graph";
+        } else if (hopVal === 0) {
+          hopClass = "inside";
+          hopText = "Already inside";
+        } else if (hopVal === 1) {
+          hopClass = "hop-1";
+          hopText = "1 Hop away";
+        }
+
+        const row = el(
+          "div",
+          "candidate-row",
+          `<div>
+             <div class="candidate-name">${c.name} ${currentUser && c.personId === currentUser.id ? '<span style="color:#00b4d8; font-size:0.75rem; font-weight:bold;">(You)</span>' : ""}</div>
+             <div class="candidate-sub">${c.headline || ""} · Skills: ${(c.matchedSkills || []).join(", ")}</div>
            </div>
-           <span class="hop-badge ${hopClass}">${hopText}</span>
-         </div>`
-      );
-      detail.appendChild(row);
+           <div style="display:flex; align-items:center; gap:16px;">
+             <div style="text-align:right;">
+               <div style="font-family:var(--font-mono); font-size:0.8rem; color:var(--accent-cyan); font-weight:600;">${pct}% Fit</div>
+               <div class="coverage-bar" style="margin-top:4px;"><div class="coverage-fill" style="width:${pct}%"></div></div>
+             </div>
+             <span class="hop-badge ${hopClass}">${hopText}</span>
+           </div>`
+        );
+        detail.appendChild(row);
+      }
     }
+
   } catch (err) {
     errorState(detail, err, () => selectJob(job, cardEl));
   }
