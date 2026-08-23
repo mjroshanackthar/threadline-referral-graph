@@ -342,100 +342,116 @@ export async function updatePersonProfile(
   universityName: string | null,
   skills: { name: string; level: string }[]
 ) {
-  const session = getSession();
+  // Step 1: Update basic properties
+  let s1 = getSession();
   try {
-    return await session.executeWrite(async (tx) => {
-      // 1. Update basic properties
-      await tx.run(
-        `MATCH (p:Person {id: $personId})
-         SET p.name = $name, p.headline = $headline`,
-        { personId, name, headline }
-      );
+    await s1.run(
+      `MATCH (p:Person {id: $personId}) SET p.name = $name, p.headline = $headline`,
+      { personId, name, headline }
+    );
+  } finally { await s1.close(); }
 
-      // 2. Update WORKS_AT relationship (detach old, optionally create/connect new)
-      await tx.run(
-        `MATCH (p:Person {id: $personId})
-         OPTIONAL MATCH (p)-[r:WORKS_AT]->()
-         DELETE r`,
-        { personId }
+  // Step 2: Detach old WORKS_AT, then create/connect new company
+  let s2 = getSession();
+  try {
+    await s2.run(
+      `MATCH (p:Person {id: $personId}) OPTIONAL MATCH (p)-[r:WORKS_AT]->() DELETE r`,
+      { personId }
+    );
+  } finally { await s2.close(); }
+
+  if (companyName && companyName.trim() !== "") {
+    const cleanCompany = companyName.trim();
+    const cid = "c-" + cleanCompany.toLowerCase().replace(/[^a-z0-9]/g, "-") + "-" + Math.floor(100 + Math.random() * 900);
+    let s2b = getSession();
+    try {
+      await s2b.run(
+        `MERGE (c:Company {name: $cleanCompany})
+         ON CREATE SET c.id = $cid, c.industry = 'Technology'
+         WITH c
+         MATCH (p:Person {id: $personId})
+         MERGE (p)-[:WORKS_AT {role: $headline}]->(c)`,
+        { personId, cleanCompany, cid, headline }
       );
-      if (companyName && companyName.trim() !== "") {
-        const cleanCompany = companyName.trim();
-        const cid = "c-" + cleanCompany.toLowerCase().replace(/[^a-z0-9]/g, "-") + "-" + Math.floor(100 + Math.random() * 900);
-        await tx.run(
-          `MERGE (c:Company {name: $cleanCompany})
-           ON CREATE SET c.id = $cid, c.industry = 'Technology'
-           WITH c
+    } finally { await s2b.close(); }
+  }
+
+  // Step 3: Detach old STUDIED_AT, then create/connect new university
+  let s3 = getSession();
+  try {
+    await s3.run(
+      `MATCH (p:Person {id: $personId}) OPTIONAL MATCH (p)-[r:STUDIED_AT]->() DELETE r`,
+      { personId }
+    );
+  } finally { await s3.close(); }
+
+  if (universityName && universityName.trim() !== "") {
+    const cleanUni = universityName.trim();
+    const uid = "u-" + cleanUni.toLowerCase().replace(/[^a-z0-9]/g, "-") + "-" + Math.floor(100 + Math.random() * 900);
+    let s3b = getSession();
+    try {
+      await s3b.run(
+        `MERGE (u:University {name: $cleanUni})
+         ON CREATE SET u.id = $uid
+         WITH u
+         MATCH (p:Person {id: $personId})
+         MERGE (p)-[:STUDIED_AT]->(u)`,
+        { personId, cleanUni, uid }
+      );
+    } finally { await s3b.close(); }
+  }
+
+  // Step 4: Detach old HAS_SKILL, then merge new skills
+  let s4 = getSession();
+  try {
+    await s4.run(
+      `MATCH (p:Person {id: $personId}) OPTIONAL MATCH (p)-[r:HAS_SKILL]->() DELETE r`,
+      { personId }
+    );
+  } finally { await s4.close(); }
+
+  if (skills && skills.length > 0) {
+    for (const sk of skills) {
+      if (!sk.name || sk.name.trim() === "") continue;
+      const cleanSkillName = sk.name.trim();
+      const sid = "s-" + cleanSkillName.toLowerCase().replace(/[^a-z0-9]/g, "-") + "-" + Math.floor(100 + Math.random() * 900);
+      let s4b = getSession();
+      try {
+        await s4b.run(
+          `MERGE (s:Skill {name: $cleanSkillName})
+           ON CREATE SET s.id = $sid
+           WITH s
            MATCH (p:Person {id: $personId})
-           MERGE (p)-[:WORKS_AT {role: $headline}]->(c)`,
-          { personId, cleanCompany, cid, headline }
+           MERGE (p)-[r:HAS_SKILL]->(s)
+           SET r.level = $level`,
+          { personId, cleanSkillName, sid, level: sk.level || "intermediate" }
         );
-      }
+      } finally { await s4b.close(); }
+    }
+  }
 
-      // 3. Update STUDIED_AT relationship (detach old, optionally create/connect new)
-      await tx.run(
-        `MATCH (p:Person {id: $personId})
-         OPTIONAL MATCH (p)-[r:STUDIED_AT]->()
-         DELETE r`,
-        { personId }
-      );
-      if (universityName && universityName.trim() !== "") {
-        const cleanUni = universityName.trim();
-        const uid = "u-" + cleanUni.toLowerCase().replace(/[^a-z0-9]/g, "-") + "-" + Math.floor(100 + Math.random() * 900);
-        await tx.run(
-          `MERGE (u:University {name: $cleanUni})
-           ON CREATE SET u.id = $uid
-           WITH u
-           MATCH (p:Person {id: $personId})
-           MERGE (p)-[:STUDIED_AT]->(u)`,
-          { personId, cleanUni, uid }
-        );
-      }
-
-      // 4. Update HAS_SKILL relationships (detach all, merge new ones)
-      await tx.run(
-        `MATCH (p:Person {id: $personId})
-         OPTIONAL MATCH (p)-[r:HAS_SKILL]->()
-         DELETE r`,
-        { personId }
-      );
-      if (skills && skills.length > 0) {
-        for (const s of skills) {
-          if (!s.name || s.name.trim() === "") continue;
-          const cleanSkillName = s.name.trim();
-          const sid = "s-" + cleanSkillName.toLowerCase().replace(/[^a-z0-9]/g, "-") + "-" + Math.floor(100 + Math.random() * 900);
-          await tx.run(
-            `MERGE (s:Skill {name: $cleanSkillName})
-             ON CREATE SET s.id = $sid
-             WITH s
-             MATCH (p:Person {id: $personId})
-             MERGE (p)-[r:HAS_SKILL]->(s)
-             SET r.level = $level`,
-            { personId, cleanSkillName, sid, level: s.level || "intermediate" }
-          );
-        }
-      }
-
-      // 5. Query and return the updated profile
-      const result = await tx.run(
-        `MATCH (p:Person {id: $personId})
-         OPTIONAL MATCH (p)-[:WORKS_AT]->(c:Company)
-         OPTIONAL MATCH (p)-[:STUDIED_AT]->(u:University)
-         OPTIONAL MATCH (p)-[hs:HAS_SKILL]->(s:Skill)
-         WITH p, c, u, collect(DISTINCT CASE WHEN s IS NOT NULL THEN {id: s.id, name: s.name, level: hs.level} ELSE null END) AS rawSkills
-         OPTIONAL MATCH (p)-[r:KNOWS]-(other:Person)
-         WITH p, c, u, rawSkills, other, r
-         ORDER BY r.strength DESC, other.name ASC
-         WITH p, c, u, rawSkills, collect(DISTINCT CASE WHEN other IS NOT NULL THEN {id: other.id, name: other.name, headline: other.headline, strength: r.strength} ELSE null END) AS rawConnections
-         RETURN p.id AS id, p.name AS name, p.headline AS headline,
-                c.name AS company, c.id AS companyId, u.name AS university, u.id AS universityId,
-                [s IN rawSkills WHERE s IS NOT NULL] AS skills,
-                [conn IN rawConnections WHERE conn IS NOT NULL] AS connections`,
-        { personId }
-      );
-      return result.records[0]?.toObject() ?? null;
-    });
+  // Step 5: Return updated profile
+  const sfinal = getSession();
+  try {
+    const result = await sfinal.run(
+      `MATCH (p:Person {id: $personId})
+       OPTIONAL MATCH (p)-[:WORKS_AT]->(c:Company)
+       OPTIONAL MATCH (p)-[:STUDIED_AT]->(u:University)
+       OPTIONAL MATCH (p)-[hs:HAS_SKILL]->(s:Skill)
+       WITH p, c, u, collect(DISTINCT CASE WHEN s IS NOT NULL THEN {id: s.id, name: s.name, level: hs.level} ELSE null END) AS rawSkills
+       OPTIONAL MATCH (p)-[r:KNOWS]-(other:Person)
+       WITH p, c, u, rawSkills, other, r
+       ORDER BY r.strength DESC, other.name ASC
+       WITH p, c, u, rawSkills, collect(DISTINCT CASE WHEN other IS NOT NULL THEN {id: other.id, name: other.name, headline: other.headline, strength: r.strength} ELSE null END) AS rawConnections
+       RETURN p.id AS id, p.name AS name, p.headline AS headline,
+              c.name AS company, c.id AS companyId, u.name AS university, u.id AS universityId,
+              [s IN rawSkills WHERE s IS NOT NULL] AS skills,
+              [conn IN rawConnections WHERE conn IS NOT NULL] AS connections`,
+      { personId }
+    );
+    return result.records[0]?.toObject() ?? null;
   } finally {
-    await session.close();
+    await sfinal.close();
   }
 }
+
