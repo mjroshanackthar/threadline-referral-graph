@@ -171,8 +171,24 @@ function initAuthListeners() {
     } catch {
       setSessionUser(null);
     }
-  } else {
-    document.getElementById("authOverlay").classList.add("active");
+  // Handle Google OAuth 2.0 Token Callback (Hash or Redirect)
+  if (window.location.hash && window.location.hash.includes("access_token")) {
+    const params = new URLSearchParams(window.location.hash.substring(1));
+    const token = params.get("access_token");
+    if (token) {
+      fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      .then((res) => res.json())
+      .then((info) => {
+        if (info.email) {
+          const googleId = info.sub || "gid-" + Math.floor(100000 + Math.random() * 900000);
+          processGoogleLogin(googleId, info.email, info.name || info.email.split("@")[0], info.picture || "");
+          history.replaceState(null, "", window.location.pathname);
+        }
+      })
+      .catch((err) => console.error("Google UserInfo fetch failed:", err));
+    }
   }
 
   document.getElementById("userSessionBadge").addEventListener("click", (e) => {
