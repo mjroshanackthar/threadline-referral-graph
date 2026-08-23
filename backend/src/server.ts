@@ -196,12 +196,12 @@ app.get(
 app.post(
   "/api/people/:id/update",
   safe(async (req, res) => {
-    const { name, headline, companyId, universityId, skills } = req.body as {
+    const { name, headline, companyName, universityName, skills } = req.body as {
       name: string;
       headline: string;
-      companyId: string | null;
-      universityId: string | null;
-      skills: { id: string; level: string }[];
+      companyName: string | null;
+      universityName: string | null;
+      skills: { name: string; level: string }[];
     };
     if (!name) {
       res.status(400).json({ error: "Full Name is required" });
@@ -211,8 +211,8 @@ app.post(
       req.params.id,
       name,
       headline,
-      companyId,
-      universityId,
+      companyName,
+      universityName,
       skills
     );
     res.json(updated);

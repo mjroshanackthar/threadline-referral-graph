@@ -338,9 +338,9 @@ export async function updatePersonProfile(
   personId: string,
   name: string,
   headline: string,
-  companyId: string | null,
-  universityId: string | null,
-  skills: { id: string; level: string }[]
+  companyName: string | null,
+  universityName: string | null,
+  skills: { name: string; level: string }[]
 ) {
   const session = getSession();
   try {
@@ -352,33 +352,43 @@ export async function updatePersonProfile(
         { personId, name, headline }
       );
 
-      // 2. Update WORKS_AT relationship (detach old, optionally connect new)
+      // 2. Update WORKS_AT relationship (detach old, optionally create/connect new)
       await tx.run(
         `MATCH (p:Person {id: $personId})
          OPTIONAL MATCH (p)-[r:WORKS_AT]->()
          DELETE r`,
         { personId }
       );
-      if (companyId) {
+      if (companyName && companyName.trim() !== "") {
+        const cleanCompany = companyName.trim();
+        const cid = "c-" + cleanCompany.toLowerCase().replace(/[^a-z0-9]/g, "-") + "-" + Math.floor(100 + Math.random() * 900);
         await tx.run(
-          `MATCH (p:Person {id: $personId}), (c:Company {id: $companyId})
+          `MERGE (c:Company {name: $cleanCompany})
+           ON CREATE SET c.id = $cid, c.industry = 'Technology'
+           WITH c
+           MATCH (p:Person {id: $personId})
            MERGE (p)-[:WORKS_AT {role: $headline}]->(c)`,
-          { personId, companyId, headline }
+          { personId, cleanCompany, cid, headline }
         );
       }
 
-      // 3. Update STUDIED_AT relationship (detach old, optionally connect new)
+      // 3. Update STUDIED_AT relationship (detach old, optionally create/connect new)
       await tx.run(
         `MATCH (p:Person {id: $personId})
          OPTIONAL MATCH (p)-[r:STUDIED_AT]->()
          DELETE r`,
         { personId }
       );
-      if (universityId) {
+      if (universityName && universityName.trim() !== "") {
+        const cleanUni = universityName.trim();
+        const uid = "u-" + cleanUni.toLowerCase().replace(/[^a-z0-9]/g, "-") + "-" + Math.floor(100 + Math.random() * 900);
         await tx.run(
-          `MATCH (p:Person {id: $personId}), (u:University {id: $universityId})
+          `MERGE (u:University {name: $cleanUni})
+           ON CREATE SET u.id = $uid
+           WITH u
+           MATCH (p:Person {id: $personId})
            MERGE (p)-[:STUDIED_AT]->(u)`,
-          { personId, universityId }
+          { personId, cleanUni, uid }
         );
       }
 
@@ -390,13 +400,20 @@ export async function updatePersonProfile(
         { personId }
       );
       if (skills && skills.length > 0) {
-        await tx.run(
-          `UNWIND $skills AS skillRow
-           MATCH (p:Person {id: $personId}), (s:Skill {id: skillRow.id})
-           MERGE (p)-[r:HAS_SKILL]->(s)
-           SET r.level = skillRow.level`,
-          { personId, skills }
-        );
+        for (const s of skills) {
+          if (!s.name || s.name.trim() === "") continue;
+          const cleanSkillName = s.name.trim();
+          const sid = "s-" + cleanSkillName.toLowerCase().replace(/[^a-z0-9]/g, "-") + "-" + Math.floor(100 + Math.random() * 900);
+          await tx.run(
+            `MERGE (s:Skill {name: $cleanSkillName})
+             ON CREATE SET s.id = $sid
+             WITH s
+             MATCH (p:Person {id: $personId})
+             MERGE (p)-[r:HAS_SKILL]->(s)
+             SET r.level = $level`,
+            { personId, cleanSkillName, sid, level: s.level || "intermediate" }
+          );
+        }
       }
 
       // 5. Query and return the updated profile

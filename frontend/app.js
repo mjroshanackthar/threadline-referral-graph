@@ -962,8 +962,8 @@ window.openEditProfileModal = async function() {
 
     populateEditSelectors();
 
-    document.getElementById("editCompanySelect").value = p.companyId || "";
-    document.getElementById("editUniSelect").value = p.universityId || "";
+    document.getElementById("editCompanyInput").value = p.company || "";
+    document.getElementById("editUniInput").value = p.university || "";
 
     window.profileEditSkills = (p.skills || []).map((s) => ({
       id: s.id,
@@ -980,20 +980,18 @@ window.openEditProfileModal = async function() {
 };
 
 function populateEditSelectors() {
-  const editCompanySelect = document.getElementById("editCompanySelect");
-  const editUniSelect = document.getElementById("editUniSelect");
-  const editSkillSelect = document.getElementById("editSkillSelect");
+  const editCompanyDatalist = document.getElementById("editCompanyDatalist");
+  const editUniDatalist = document.getElementById("editUniDatalist");
+  const editSkillDatalist = document.getElementById("editSkillDatalist");
 
-  if (companiesCache.length > 0 && editCompanySelect) {
-    editCompanySelect.innerHTML = `<option value="">None / Independent</option>` +
-      companiesCache.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
+  if (companiesCache.length > 0 && editCompanyDatalist) {
+    editCompanyDatalist.innerHTML = companiesCache.map((c) => `<option value="${c.name}"></option>`).join("");
   }
-  if (universitiesCache.length > 0 && editUniSelect) {
-    editUniSelect.innerHTML = `<option value="">None / Not specified</option>` +
-      universitiesCache.map((u) => `<option value="${u.id}">${u.name}</option>`).join("");
+  if (universitiesCache.length > 0 && editUniDatalist) {
+    editUniDatalist.innerHTML = universitiesCache.map((u) => `<option value="${u.name}"></option>`).join("");
   }
-  if (skillsCache.length > 0 && editSkillSelect) {
-    editSkillSelect.innerHTML = skillsCache.map((s) => `<option value="${s.id}">${s.name}</option>`).join("");
+  if (skillsCache.length > 0 && editSkillDatalist) {
+    editSkillDatalist.innerHTML = skillsCache.map((s) => `<option value="${s.name}"></option>`).join("");
   }
 }
 
@@ -1021,26 +1019,27 @@ window.removeSkillLocal = function(skillId) {
 };
 
 document.getElementById("addSkillToProfileBtn").addEventListener("click", () => {
-  const skillSelect = document.getElementById("editSkillSelect");
-  const skillId = skillSelect.value;
+  const skillInput = document.getElementById("editSkillInput");
+  const skillName = skillInput.value.trim();
   const level = document.getElementById("editSkillLevelSelect").value;
 
-  if (!skillId) return;
+  if (!skillName) return;
 
-  const skillObj = skillsCache.find((s) => s.id === skillId);
-  if (!skillObj) return;
-
-  if (window.profileEditSkills.some((s) => s.id === skillId)) {
+  if (window.profileEditSkills.some((s) => s.name.toLowerCase() === skillName.toLowerCase())) {
     alert("This skill is already added. Remove it first to change level.");
     return;
   }
 
+  const existing = skillsCache.find((s) => s.name.toLowerCase() === skillName.toLowerCase());
+  const skillId = existing ? existing.id : "new-skill-" + Math.floor(100000 + Math.random() * 900000);
+
   window.profileEditSkills.push({
     id: skillId,
-    name: skillObj.name,
+    name: existing ? existing.name : skillName,
     level: level
   });
 
+  skillInput.value = "";
   renderEditSkillsList();
 });
 
@@ -1053,9 +1052,9 @@ document.getElementById("submitEditProfileBtn").addEventListener("click", async 
 
   const name = document.getElementById("editNameInput").value.trim();
   const headline = document.getElementById("editHeadlineInput").value.trim();
-  const companyId = document.getElementById("editCompanySelect").value || null;
-  const universityId = document.getElementById("editUniSelect").value || null;
-  const skills = window.profileEditSkills.map((s) => ({ id: s.id, level: s.level }));
+  const companyName = document.getElementById("editCompanyInput").value.trim() || null;
+  const universityName = document.getElementById("editUniInput").value.trim() || null;
+  const skills = window.profileEditSkills.map((s) => ({ name: s.name, level: s.level }));
 
   if (!name) {
     alert("Full Name is required.");
@@ -1070,8 +1069,8 @@ document.getElementById("submitEditProfileBtn").addEventListener("click", async 
     const updatedUser = await apiPost(`/api/people/${currentUser.id}/update`, {
       name,
       headline,
-      companyId,
-      universityId,
+      companyName,
+      universityName,
       skills
     });
 

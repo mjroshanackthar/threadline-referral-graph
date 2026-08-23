@@ -384,12 +384,14 @@
 
         <div class="modal-form-group">
           <label>Current Employer / Company</label>
-          <select id="editCompanySelect"></select>
+          <input type="text" id="editCompanyInput" list="editCompanyDatalist" placeholder="Search or type custom company..." />
+          <datalist id="editCompanyDatalist"></datalist>
         </div>
 
         <div class="modal-form-group">
           <label>Alma Mater / University</label>
-          <select id="editUniSelect"></select>
+          <input type="text" id="editUniInput" list="editUniDatalist" placeholder="Search or type custom university..." />
+          <datalist id="editUniDatalist"></datalist>
         </div>
 
         <div class="modal-form-group">
@@ -397,8 +399,9 @@
           <div id="editSkillsList" class="skill-chip-row" style="margin-bottom: 14px;"></div>
           
           <div style="display: flex; gap: 8px; align-items: center; margin-top: 10px;">
-            <select id="editSkillSelect" style="flex: 2;"></select>
-            <select id="editSkillLevelSelect" style="flex: 1.2;">
+            <input type="text" id="editSkillInput" list="editSkillDatalist" placeholder="Search or type a skill..." style="flex: 2; height: 42px;" />
+            <datalist id="editSkillDatalist"></datalist>
+            <select id="editSkillLevelSelect" style="flex: 1.2; height: 42px;">
               <option value="beginner">Beginner</option>
               <option value="intermediate" selected>Intermediate</option>
               <option value="advanced">Advanced</option>
