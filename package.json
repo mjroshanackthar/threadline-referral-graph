@@ -4,8 +4,9 @@
   "description": "Threadline Alumni & Referral Network Graph Application",
   "main": "backend/dist/server.js",
   "scripts": {
+    "postinstall": "cd backend && npm install && npm run build",
     "build": "cd backend && npm install && npm run build",
-    "start": "cd backend && npm start",
+    "start": "cd backend && node dist/server.js",
     "dev": "cd backend && npm run dev"
   },
   "engines": {
