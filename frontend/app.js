@@ -416,7 +416,9 @@ async function selectPerson(id, rowEl) {
 
     detail.innerHTML = `
       <div class="profile-header">
-        <div class="profile-avatar-lg">${initials}</div>
+        <div class="profile-avatar-lg">
+          ${p.avatarUrl ? `<img src="${p.avatarUrl}" alt="${p.name}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;" />` : initials}
+        </div>
         <div class="profile-title-group">
           <h2>${p.name}</h2>
           <div class="profile-headline-tag">${p.headline || "Graph Network Member"}</div>
@@ -437,10 +439,13 @@ async function selectPerson(id, rowEl) {
       <div class="section-label">Verified Skill Matrix</div>
       <div class="skill-chip-row" style="margin-bottom:24px;">${skillChips || '<span class="empty-state">No skills recorded</span>'}</div>
 
-      <div style="display:flex; align-items:center; gap:12px;">
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
         ${
           currentUser && p.id === currentUser.id
-            ? `<span class="hop-badge inside">👤 Your Logged-In Profile</span>`
+            ? `<span class="hop-badge inside">👤 Your Logged-In Profile</span>
+               <button onclick="openEditProfileModal()" class="primary-btn glow-btn btn-sm">
+                 ✏️ Edit Profile
+               </button>`
             : connectedPairs.has((currentUser ? currentUser.id : "") + ":" + p.id) || connectedPairs.has(p.id + ":" + (currentUser ? currentUser.id : ""))
             ? `<span class="hop-badge inside" style="padding:8px 16px; font-size:0.85rem;">✓ Connected in Graph DB</span>
                <button onclick="openConnectModalWith('${p.id}')" class="primary-btn btn-sm" style="background:rgba(255,255,255,0.08); color:var(--text-main); border:1px solid var(--border-light);">
@@ -895,6 +900,134 @@ document.getElementById("closeRequestIntroBtn").addEventListener("click", () => 
 document.getElementById("sendIntroMsgBtn").addEventListener("click", () => {
   document.getElementById("requestIntroModal").classList.remove("active");
   showToast(`Referral request message sent to ${pendingIntroContact || "contact"}!`, "✉️");
+});
+
+// ---------------------------------------------------------------------------
+// MODAL 3: Edit Personal Profile Modal
+// ---------------------------------------------------------------------------
+
+async function openEditProfileModal() {
+  if (!currentUser) return;
+  const p = await apiGet(`/api/people/${currentUser.id}`).catch(() => currentUser);
+
+  document.getElementById("editNameInput").value = p.name || "";
+  document.getElementById("editHeadlineInput").value = p.headline || "";
+  document.getElementById("editAvatarUrlInput").value = p.avatarUrl || "";
+
+  // Set avatar preview
+  const prevImg = document.getElementById("editAvatarPreviewImg");
+  const prevInit = document.getElementById("editAvatarPreviewInitial");
+  if (p.avatarUrl) {
+    prevImg.src = p.avatarUrl;
+    prevImg.style.display = "block";
+    prevInit.style.display = "none";
+  } else {
+    prevInit.textContent = getInitials(p.name || "User");
+    prevImg.style.display = "none";
+    prevInit.style.display = "flex";
+  }
+
+  // Live avatar URL input preview update
+  document.getElementById("editAvatarUrlInput").oninput = (e) => {
+    const url = e.target.value.trim();
+    if (url) {
+      prevImg.src = url;
+      prevImg.style.display = "block";
+      prevInit.style.display = "none";
+    } else {
+      prevImg.style.display = "none";
+      prevInit.style.display = "flex";
+    }
+  };
+
+  // Populate company dropdown
+  const compSelect = document.getElementById("editCompanySelect");
+  compSelect.innerHTML = '<option value="">None / Independent</option>';
+  for (const c of companiesCache) {
+    const opt = document.createElement("option");
+    opt.value = c.id;
+    opt.textContent = c.name;
+    if (p.companyId === c.id || p.company === c.name) opt.selected = true;
+    compSelect.appendChild(opt);
+  }
+
+  // Populate university dropdown
+  const uniSelect = document.getElementById("editUniversitySelect");
+  uniSelect.innerHTML = '<option value="">None / Not Listed</option>';
+  for (const u of universitiesCache) {
+    const opt = document.createElement("option");
+    opt.value = u.id;
+    opt.textContent = u.name;
+    if (p.universityId === u.id || p.university === u.name) opt.selected = true;
+    uniSelect.appendChild(opt);
+  }
+
+  // Populate skills input comma-separated
+  const skillNames = (p.skills || []).map((s) => (s && s.name ? s.name : s)).join(", ");
+  document.getElementById("editSkillsInput").value = skillNames;
+
+  document.getElementById("editProfileModal").classList.add("active");
+}
+window.openEditProfileModal = openEditProfileModal;
+
+document.getElementById("closeEditProfileBtn").addEventListener("click", () => {
+  document.getElementById("editProfileModal").classList.remove("active");
+});
+
+document.getElementById("saveProfileBtn").addEventListener("click", async () => {
+  if (!currentUser) return;
+  const btn = document.getElementById("saveProfileBtn");
+  const name = document.getElementById("editNameInput").value.trim();
+  const headline = document.getElementById("editHeadlineInput").value.trim();
+  const picture = document.getElementById("editAvatarUrlInput").value.trim();
+  const companyId = document.getElementById("editCompanySelect").value;
+  const universityId = document.getElementById("editUniversitySelect").value;
+  const rawSkills = document.getElementById("editSkillsInput").value;
+
+  if (!name) {
+    alert("Name cannot be empty.");
+    return;
+  }
+
+  const skillsArr = rawSkills
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((s) => ({ name: s, level: "Intermediate" }));
+
+  btn.textContent = "Saving to CognoDB...";
+  btn.disabled = true;
+
+  try {
+    const updated = await apiPost(`/api/people/${currentUser.id}`, {
+      name,
+      headline,
+      picture,
+      companyId,
+      universityId,
+      skills: skillsArr
+    });
+
+    document.getElementById("editProfileModal").classList.remove("active");
+
+    // Update session and caches
+    const fullUser = { ...currentUser, ...updated };
+    setSessionUser(fullUser);
+
+    const idx = peopleCache.findIndex((p) => p.id === currentUser.id);
+    if (idx !== -1) {
+      peopleCache[idx] = fullUser;
+      renderPeopleList(peopleCache);
+    }
+
+    showToast("Profile Updated Successfully in CognoDB!", "✓");
+    selectPerson(currentUser.id);
+  } catch (err) {
+    alert(`Failed to save profile: ${err.message}`);
+  } finally {
+    btn.textContent = "Save Changes to CognoDB";
+    btn.disabled = false;
+  }
 });
 
 // ---------------------------------------------------------------------------

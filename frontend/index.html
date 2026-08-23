@@ -356,8 +356,53 @@
           <textarea id="requestMsgTextarea" rows="4" class="glass-textarea"></textarea>
         </div>
       </div>
+  <!-- MODAL 3: Edit Profile Modal -->
+  <div id="editProfileModal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 580px;">
+      <div class="modal-header">
+        <h3 class="modal-title">✏️ Edit Your Personal Profile</h3>
+        <button id="closeEditProfileBtn" class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-sub">Update your profile picture, job title, placement company, alma mater, and skills matrix.</p>
+        
+        <div class="profile-avatar-edit-preview">
+          <div id="editAvatarPreviewInitial" class="avatar-circle avatar-large"></div>
+          <img id="editAvatarPreviewImg" src="" alt="Avatar" class="avatar-circle avatar-large" style="display:none;" />
+          <div class="modal-form-group" style="flex:1;">
+            <label>Profile Image URL</label>
+            <input type="text" id="editAvatarUrlInput" placeholder="https://images.unsplash.com/..." class="glass-input" />
+          </div>
+        </div>
+
+        <div class="modal-form-group">
+          <label>Full Name</label>
+          <input type="text" id="editNameInput" placeholder="Your Full Name" class="glass-input" />
+        </div>
+
+        <div class="modal-form-group">
+          <label>Job Title / Headline</label>
+          <input type="text" id="editHeadlineInput" placeholder="e.g. Lead Software Architect" class="glass-input" />
+        </div>
+
+        <div class="modal-grid-2">
+          <div class="modal-form-group">
+            <label>Company</label>
+            <select id="editCompanySelect" class="glass-select"></select>
+          </div>
+          <div class="modal-form-group">
+            <label>Alma Mater (University)</label>
+            <select id="editUniversitySelect" class="glass-select"></select>
+          </div>
+        </div>
+
+        <div class="modal-form-group">
+          <label>Verified Skill Matrix (Comma Separated)</label>
+          <input type="text" id="editSkillsInput" placeholder="React, Node.js, Python, Neo4j, System Architecture" class="glass-input" />
+        </div>
+      </div>
       <div class="modal-footer">
-        <button id="sendIntroMsgBtn" class="primary-btn glow-btn" style="width:100%;">Send Referral Request</button>
+        <button id="saveProfileBtn" class="primary-btn glow-btn" style="width:100%;">Save Changes to CognoDB</button>
       </div>
     </div>
   </div>

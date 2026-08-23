@@ -316,3 +316,101 @@ export async function addConnection(fromId: string, toId: string, strength: numb
     await session.close();
   }
 }
+
+export async function updatePersonProfile(
+  id: string,
+  name: string,
+  headline: string,
+  picture?: string,
+  companyId?: string,
+  universityId?: string,
+  skills?: Array<{ name: string; level: string }>
+) {
+  const session = getSession();
+  try {
+    const result = await session.executeWrite(async (tx) => {
+      // 1. Update basic properties
+      await tx.run(
+        `MATCH (p:Person {id: $id})
+         SET p.name = $name,
+             p.headline = $headline,
+             p.avatarUrl = CASE WHEN $picture IS NOT NULL AND $picture <> '' THEN $picture ELSE p.avatarUrl END`,
+        { id, name, headline, picture: picture || null }
+      );
+
+      // 2. Update company relationship
+      if (companyId) {
+        await tx.run(
+          `MATCH (p:Person {id: $id})
+           OPTIONAL MATCH (p)-[r:WORKS_AT]->(:Company)
+           DELETE r
+           WITH p
+           MATCH (c:Company {id: $companyId})
+           MERGE (p)-[:WORKS_AT]->(c)`,
+          { id, companyId }
+        );
+      }
+
+      // 3. Update university relationship
+      if (universityId) {
+        await tx.run(
+          `MATCH (p:Person {id: $id})
+           OPTIONAL MATCH (p)-[r:STUDIED_AT]->(:University)
+           DELETE r
+           WITH p
+           MATCH (u:University {id: $universityId})
+           MERGE (p)-[:STUDIED_AT]->(u)`,
+          { id, universityId }
+        );
+      }
+
+      // 4. Update skills if provided
+      if (skills && Array.isArray(skills)) {
+        await tx.run(
+          `MATCH (p:Person {id: $id})-[r:HAS_SKILL]->(:Skill)
+           DELETE r`,
+          { id }
+        );
+
+        for (const s of skills) {
+          if (!s.name || !s.name.trim()) continue;
+          const skillName = s.name.trim();
+          const level = s.level || "Intermediate";
+          const skillId = "sk-" + skillName.toLowerCase().replace(/[^a-z0-9]/g, "-");
+          await tx.run(
+            `MATCH (p:Person {id: $id})
+             MERGE (sk:Skill {id: $skillId})
+             ON CREATE SET sk.name = $skillName
+             MERGE (p)-[hs:HAS_SKILL]->(sk)
+             SET hs.level = $level`,
+            { id, skillId, skillName, level }
+          );
+        }
+      }
+
+      // Return full updated profile
+      const res = await tx.run(
+        `MATCH (p:Person {id: $id})
+         OPTIONAL MATCH (p)-[:WORKS_AT]->(c:Company)
+         OPTIONAL MATCH (p)-[:STUDIED_AT]->(u:University)
+         OPTIONAL MATCH (p)-[hs:HAS_SKILL]->(sk:Skill)
+         WITH p, c, u, collect(DISTINCT {name: sk.name, level: hs.level}) AS rawSkills
+         RETURN p.id AS id,
+                p.name AS name,
+                p.headline AS headline,
+                p.email AS email,
+                p.avatarUrl AS avatarUrl,
+                c.id AS companyId,
+                c.name AS company,
+                u.id AS universityId,
+                u.name AS university,
+                [s IN rawSkills WHERE s.name IS NOT NULL] AS skills`,
+        { id }
+      );
+      return res.records[0]?.toObject();
+    });
+    return result;
+  } finally {
+    await session.close();
+  }
+}
