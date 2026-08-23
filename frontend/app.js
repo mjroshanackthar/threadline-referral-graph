@@ -192,6 +192,27 @@ function initAuthListeners() {
     if (authOverlay) authOverlay.classList.add("active");
   }
 
+  // Synchronize login session across open tabs and windows in real-time
+  window.addEventListener("storage", (e) => {
+    if (e.key === "threadline_user") {
+      if (e.newValue) {
+        try {
+          const u = JSON.parse(e.newValue);
+          setSessionUser(u);
+          loadPeople("", true).then(() => {
+            selectPerson(u.id);
+            const introBtn = document.getElementById("introGo");
+            if (introBtn) introBtn.click();
+          });
+        } catch (err) {
+          console.error("Storage sync failed:", err);
+        }
+      } else {
+        setSessionUser(null);
+      }
+    }
+  });
+
   // Handle Google OAuth 2.0 Token Callback (Hash or Redirect)
   if (window.location.hash && window.location.hash.includes("access_token")) {
     const params = new URLSearchParams(window.location.hash.substring(1));
@@ -202,7 +223,20 @@ function initAuthListeners() {
         window.close();
         return;
       } else {
+        // Fallback: handle token in current window (will write to localStorage and trigger the sync in the parent tab)
         handleGoogleToken(token);
+        // Show success state in popup and close after a delay
+        document.body.innerHTML = `
+          <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#0b0f19; color:#fff; font-family:sans-serif; text-align:center; padding:20px;">
+            <div style="font-size:3rem; margin-bottom:15px;">✨</div>
+            <h2 style="margin-bottom:10px;">Authentication Successful!</h2>
+            <p style="color:#a0aec0; font-size:0.95rem; margin-bottom:20px;">You are signed in. You can close this window now.</p>
+            <button onclick="window.close()" style="background:#00b4d8; color:#fff; border:none; padding:10px 20px; border-radius:5px; font-weight:600; cursor:pointer;">Close Window</button>
+          </div>
+        `;
+        setTimeout(() => {
+          window.close();
+        }, 2000);
       }
     }
   }
