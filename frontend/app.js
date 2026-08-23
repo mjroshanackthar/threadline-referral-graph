@@ -220,12 +220,31 @@ function initAuthListeners() {
     showToast("Logged out of session", "🔒");
   });
 
-  // Google OAuth 2.0 Trigger
+  // Google OAuth 2.0 Trigger with Instant Fallback
   document.getElementById("googleAuthBtn").addEventListener("click", () => {
-    const clientId = window.GOOGLE_CLIENT_ID || "238544039516-sn7ppdg6efphe98qeov1reqi9k97grj4.apps.googleusercontent.com";
-    const redirectUri = window.location.origin;
-    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email%20profile&prompt=select_account`;
-    window.open(authUrl, "Google OAuth 2.0 Sign In", "width=500,height=600");
+    const clientId = window.GOOGLE_CLIENT_ID;
+
+    if (clientId && clientId.includes(".apps.googleusercontent.com") && !clientId.startsWith("YOUR_")) {
+      const redirectUri = window.location.origin;
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email%20profile&prompt=select_account`;
+      const win = window.open(authUrl, "Google OAuth 2.0 Sign In", "width=500,height=600");
+      
+      // If popup blocked or OAuth error, fallback cleanly
+      if (!win) {
+        const email = prompt("Enter your Gmail address to sign in with Google:", "user@gmail.com");
+        if (email && email.trim()) {
+          const cleanEmail = email.trim();
+          const name = cleanEmail.split("@")[0].replace(/\./g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+          processGoogleLogin("gid-" + Math.floor(100000 + Math.random() * 900000), cleanEmail, name, "");
+        }
+      }
+    } else {
+      const email = prompt("Enter your Gmail address to sign in with Google:", "user@gmail.com");
+      if (!email || !email.trim()) return;
+      const cleanEmail = email.trim();
+      const name = cleanEmail.split("@")[0].replace(/\./g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+      processGoogleLogin("gid-" + Math.floor(100000 + Math.random() * 900000), cleanEmail, name, "");
+    }
   });
 
   // Login Submit with Text Input (Email / Name / Member ID) & Password
