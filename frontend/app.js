@@ -215,26 +215,12 @@ function initAuthListeners() {
     showToast("Logged out of session", "🔒");
   });
 
-  // Google OAuth 2.0 & Fast Google Sign-In Trigger
+  // Google OAuth 2.0 Trigger
   document.getElementById("googleAuthBtn").addEventListener("click", () => {
-    const configuredClientId = window.GOOGLE_CLIENT_ID;
-
-    if (configuredClientId && configuredClientId !== "YOUR_GOOGLE_CLIENT_ID") {
-      if (window.google && window.google.accounts && window.google.accounts.id) {
-        window.google.accounts.id.prompt();
-      } else {
-        const redirectUri = window.location.origin;
-        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(configuredClientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email%20profile&prompt=select_account`;
-        window.open(authUrl, "Google OAuth 2.0 Sign In", "width=500,height=600");
-      }
-    } else {
-      const email = prompt("Enter your Google / Gmail address to sign in:", "roshan@gmail.com");
-      if (!email || !email.trim()) return;
-      const cleanEmail = email.trim();
-      const name = cleanEmail.split("@")[0].replace(/\./g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-      const googleId = "gid-" + Math.floor(100000 + Math.random() * 900000);
-      processGoogleLogin(googleId, cleanEmail, name, "");
-    }
+    const clientId = window.GOOGLE_CLIENT_ID || "238544039516-sn7ppdg6efphe98qeov1reqi9k97grj4.apps.googleusercontent.com";
+    const redirectUri = window.location.origin;
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email%20profile&prompt=select_account`;
+    window.open(authUrl, "Google OAuth 2.0 Sign In", "width=500,height=600");
   });
 
   // Login Submit with Text Input (Email / Name / Member ID) & Password
