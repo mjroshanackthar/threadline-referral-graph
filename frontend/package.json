@@ -1,0 +1,8 @@
+{
+  "name": "referral-graph-frontend",
+  "version": "1.0.0",
+  "description": "Static vanilla-JS frontend for the Alumni & Referral Network — no build step required.",
+  "scripts": {
+    "dev": "npx serve . -l 5173"
+  }
+}

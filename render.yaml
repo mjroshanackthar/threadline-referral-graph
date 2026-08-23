@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: threadline-referral-graph
+    env: node
+    buildCommand: npm run build
+    startCommand: npm start
+    envVars:
+      - key: COGNODB_URI
+        value: neo4j+s://db-bea845d6.bravo.databases.cognodb.com
+      - key: COGNODB_USER
+        value: cognodb
+      - key: COGNODB_PASSWORD
+        value: 7c5de4035f05414cc9e1042001a85da7
+      - key: PORT
+        value: 10000

@@ -1,0 +1,14 @@
+{
+  "name": "threadline-referral-graph",
+  "version": "1.0.0",
+  "description": "Threadline Alumni & Referral Network Graph Application",
+  "main": "backend/dist/server.js",
+  "scripts": {
+    "build": "cd backend && npm install && npm run build",
+    "start": "cd backend && npm start",
+    "dev": "cd backend && npm run dev"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
