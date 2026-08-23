@@ -558,11 +558,54 @@ async function selectJob(job, cardEl) {
       return;
     }
 
+    let ownCandidate = null;
+    if (currentUser) {
+      ownCandidate = candidates.find((c) => c.personId === currentUser.id);
+    }
+
+    let ownMatchHtml = "";
+    if (currentUser) {
+      if (ownCandidate) {
+        const ownPct = Math.round((ownCandidate.skillCoverage || 0) * 100);
+        const ownHopVal = unwrapNum(ownCandidate.closestHop);
+        let ownHopText = "Not connected in graph";
+        if (ownHopVal === 0) ownHopText = "You are already inside this company!";
+        else if (ownHopVal === 1) ownHopText = "You have a direct contact at this company!";
+        else if (ownHopVal > 1) ownHopText = `You are ${ownHopVal} hops away from a warm referral!`;
+
+        ownMatchHtml = `
+          <div class="info-card" style="margin-bottom:20px; background:rgba(0,180,216,0.05); border:1px solid rgba(0, 180, 216, 0.25); padding:14px; border-radius:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <div style="font-weight:700; font-size:0.95rem; color:#00b4d8;">🎯 Your Match Analysis</div>
+              <span class="hop-badge inside" style="font-size:0.75rem;">${ownPct}% Skill Match</span>
+            </div>
+            <div style="font-size:0.85rem; color:var(--text-main); font-weight:500; margin-bottom:6px;">${ownHopText}</div>
+            <div style="font-size:0.75rem; color:var(--text-sub);">
+              ${ownHopVal > 0 ? `Go to the <b>Warm Intros</b> tab and search for <b>${job.companyName}</b> to request a referral!` : "You're a strong fit! Reach out to your contacts or apply directly."}
+            </div>
+          </div>
+        `;
+      } else {
+        ownMatchHtml = `
+          <div class="info-card" style="margin-bottom:20px; background:rgba(255,255,255,0.02); border:1px solid var(--border-light); padding:14px; border-radius:8px;">
+            <div style="font-weight:700; font-size:0.95rem; color:var(--text-main); margin-bottom:6px;">🎯 Your Match Analysis</div>
+            <div style="font-size:0.8rem; color:var(--text-sub); line-height:1.4;">
+              You do not have any matching skills recorded for this role. Go to <b>Directory ➔ Edit Profile</b> to add relevant skills and see your matching score!
+            </div>
+          </div>
+        `;
+      }
+    }
+
     detail.innerHTML = `
       <div style="margin-bottom:20px;">
         <h2 style="font-family:var(--font-display); font-size:1.35rem; font-weight:700; margin-bottom:4px;">${job.title}</h2>
-        <div style="font-size:0.88rem; color:var(--text-muted);">${job.companyName} · Ranked by skill overlap & network proximity</div>
+        <div style="font-size:0.88rem; color:var(--text-muted);">${job.companyName} · Skill requirements & network alignment</div>
       </div>
+
+      ${ownMatchHtml}
+
+      <div class="section-label" style="margin-bottom:12px;">👥 Network Talent Pool (Ranked Candidates)</div>
     `;
 
     for (const c of candidates) {
@@ -586,7 +629,7 @@ async function selectJob(job, cardEl) {
         "div",
         "candidate-row",
         `<div>
-           <div class="candidate-name">${c.name}</div>
+           <div class="candidate-name">${c.name} ${currentUser && c.personId === currentUser.id ? '<span style="color:#00b4d8; font-size:0.75rem; font-weight:bold;">(You)</span>' : ""}</div>
            <div class="candidate-sub">${c.headline || ""} · Skills: ${(c.matchedSkills || []).join(", ")}</div>
          </div>
          <div style="display:flex; align-items:center; gap:16px;">
