@@ -415,6 +415,8 @@ async function selectPerson(id, rowEl) {
       .map((s) => `<span class="skill-chip ${s.level || "intermediate"}">${s.name}</span>`)
       .join("");
 
+    const isOwn = (currentUser && p.id === currentUser.id);
+
     detail.innerHTML = `
       <div class="profile-header">
         <div class="profile-avatar-lg">${initials}</div>
@@ -426,17 +428,50 @@ async function selectPerson(id, rowEl) {
 
       <div class="info-cards-grid">
         <div class="info-card">
-          <div class="info-label">Company Placement</div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <div class="info-label" style="margin:0;">Company Placement</div>
+            ${isOwn ? `<span onclick="openEditProfileModal()" style="cursor:pointer; font-size:0.75rem; color:#00b4d8; font-weight:600; display:flex; align-items:center; gap:3px;">✏️ Edit</span>` : ""}
+          </div>
           <div class="info-value">${p.company || "Independent / Unspecified"}</div>
         </div>
         <div class="info-card">
-          <div class="info-label">Alma Mater</div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <div class="info-label" style="margin:0;">Alma Mater</div>
+            ${isOwn ? `<span onclick="openEditProfileModal()" style="cursor:pointer; font-size:0.75rem; color:#00b4d8; font-weight:600; display:flex; align-items:center; gap:3px;">✏️ Edit</span>` : ""}
+          </div>
           <div class="info-value">${p.university || "Not listed"}</div>
         </div>
       </div>
 
-      <div class="section-label">Verified Skill Matrix</div>
-      <div class="skill-chip-row" style="margin-bottom:24px;">${skillChips || '<span class="empty-state">No skills recorded</span>'}</div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; margin-bottom:8px;">
+        <div class="section-label" style="margin:0;">Verified Skill Matrix</div>
+        ${isOwn ? `<span onclick="openEditProfileModal()" style="cursor:pointer; font-size:0.75rem; color:#00b4d8; font-weight:600; display:flex; align-items:center; gap:3px;">✏️ Edit</span>` : ""}
+      </div>
+      <div class="skill-chip-row" style="margin-bottom:20px;">${skillChips || '<span class="empty-state">No skills recorded</span>'}</div>
+
+      <div class="section-label" style="margin-top:20px; margin-bottom:8px;">🕸️ Direct Network Connections</div>
+      <div class="connections-list" style="display:flex; flex-direction:column; gap:8px; margin-bottom:24px; max-height:220px; overflow-y:auto; padding-right:4px;">
+        ${
+          (!p.connections || p.connections.length === 0)
+            ? `<div class="empty-state" style="font-size:0.85rem; color:var(--text-sub); padding:10px 0;">No active connections in CognoDB. Connect with members below!</div>`
+            : p.connections.map(c => `
+                <div class="info-card" style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:rgba(255,255,255,0.02); border-radius:6px; border:1px solid var(--border-light); margin-bottom:4px;">
+                  <div style="display:flex; flex-direction:column; gap:2px;">
+                    <div style="font-size:0.9rem; font-weight:600; color:var(--text-main); cursor:pointer; text-decoration:underline;" onclick="selectPerson('${c.id}')">${c.name}</div>
+                    <div style="font-size:0.75rem; color:var(--text-sub);">${c.headline || "Graph Network Member"}</div>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="hop-badge inside" style="padding:4px 8px; font-size:0.75rem; font-weight:600; background:rgba(0,180,216,0.1); color:#00b4d8; border:1px solid rgba(0,180,216,0.2);">Trust: ${Math.round(c.strength * 100)}%</span>
+                    ${
+                      currentUser && (p.id === currentUser.id || c.id === currentUser.id)
+                        ? `<button onclick="openConnectModalWith('${c.id === currentUser.id ? p.id : c.id}')" class="primary-btn btn-sm" style="padding:4px 8px; font-size:0.7rem; height:auto; background:rgba(255,255,255,0.05); color:var(--text-main); border:1px solid var(--border-light);">Edit</button>`
+                        : ""
+                    }
+                  </div>
+                </div>
+              `).join("")
+        }
+      </div>
 
       <div style="display:flex; align-items:center; gap:12px;">
         ${

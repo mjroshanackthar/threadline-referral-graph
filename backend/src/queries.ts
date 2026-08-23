@@ -40,9 +40,14 @@ export async function getPersonProfile(personId: string) {
          OPTIONAL MATCH (p)-[:STUDIED_AT]->(u:University)
          OPTIONAL MATCH (p)-[hs:HAS_SKILL]->(s:Skill)
          WITH p, c, u, collect(DISTINCT CASE WHEN s IS NOT NULL THEN {id: s.id, name: s.name, level: hs.level} ELSE null END) AS rawSkills
+         OPTIONAL MATCH (p)-[r:KNOWS]-(other:Person)
+         WITH p, c, u, rawSkills, other, r
+         ORDER BY r.strength DESC, other.name ASC
+         WITH p, c, u, rawSkills, collect(DISTINCT CASE WHEN other IS NOT NULL THEN {id: other.id, name: other.name, headline: other.headline, strength: r.strength} ELSE null END) AS rawConnections
          RETURN p.id AS id, p.name AS name, p.headline AS headline,
                 c.name AS company, c.id AS companyId, u.name AS university, u.id AS universityId,
-                [s IN rawSkills WHERE s IS NOT NULL] AS skills`,
+                [s IN rawSkills WHERE s IS NOT NULL] AS skills,
+                [conn IN rawConnections WHERE conn IS NOT NULL] AS connections`,
         { personId }
       )
     );
@@ -401,9 +406,14 @@ export async function updatePersonProfile(
          OPTIONAL MATCH (p)-[:STUDIED_AT]->(u:University)
          OPTIONAL MATCH (p)-[hs:HAS_SKILL]->(s:Skill)
          WITH p, c, u, collect(DISTINCT CASE WHEN s IS NOT NULL THEN {id: s.id, name: s.name, level: hs.level} ELSE null END) AS rawSkills
+         OPTIONAL MATCH (p)-[r:KNOWS]-(other:Person)
+         WITH p, c, u, rawSkills, other, r
+         ORDER BY r.strength DESC, other.name ASC
+         WITH p, c, u, rawSkills, collect(DISTINCT CASE WHEN other IS NOT NULL THEN {id: other.id, name: other.name, headline: other.headline, strength: r.strength} ELSE null END) AS rawConnections
          RETURN p.id AS id, p.name AS name, p.headline AS headline,
                 c.name AS company, c.id AS companyId, u.name AS university, u.id AS universityId,
-                [s IN rawSkills WHERE s IS NOT NULL] AS skills`,
+                [s IN rawSkills WHERE s IS NOT NULL] AS skills,
+                [conn IN rawConnections WHERE conn IS NOT NULL] AS connections`,
         { personId }
       );
       return result.records[0]?.toObject() ?? null;
