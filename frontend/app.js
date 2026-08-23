@@ -438,25 +438,16 @@ async function selectPerson(id, rowEl) {
 
       <div class="info-cards-grid">
         <div class="info-card">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-            <div class="info-label" style="margin:0;">Company Placement</div>
-            ${isOwn ? `<span onclick="openEditProfileModal()" style="cursor:pointer; font-size:0.75rem; color:#00b4d8; font-weight:600; display:flex; align-items:center; gap:3px;">✏️ Edit</span>` : ""}
-          </div>
+          <div class="info-label">Company Placement</div>
           <div class="info-value">${p.company || "Independent / Unspecified"}</div>
         </div>
         <div class="info-card">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-            <div class="info-label" style="margin:0;">Alma Mater</div>
-            ${isOwn ? `<span onclick="openEditProfileModal()" style="cursor:pointer; font-size:0.75rem; color:#00b4d8; font-weight:600; display:flex; align-items:center; gap:3px;">✏️ Edit</span>` : ""}
-          </div>
+          <div class="info-label">Alma Mater</div>
           <div class="info-value">${p.university || "Not listed"}</div>
         </div>
       </div>
 
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; margin-bottom:8px;">
-        <div class="section-label" style="margin:0;">Verified Skill Matrix</div>
-        ${isOwn ? `<span onclick="openEditProfileModal()" style="cursor:pointer; font-size:0.75rem; color:#00b4d8; font-weight:600; display:flex; align-items:center; gap:3px;">✏️ Edit</span>` : ""}
-      </div>
+      <div class="section-label">Verified Skill Matrix</div>
       <div class="skill-chip-row" style="margin-bottom:20px;">${skillChips || '<span class="empty-state">No skills recorded</span>'}</div>
 
       <div class="section-label" style="margin-top:20px; margin-bottom:8px;">🕸️ Direct Network Connections</div>
