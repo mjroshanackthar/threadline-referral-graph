@@ -171,6 +171,11 @@ function initAuthListeners() {
     } catch {
       setSessionUser(null);
     }
+  } else {
+    const authOverlay = document.getElementById("authOverlay");
+    if (authOverlay) authOverlay.classList.add("active");
+  }
+
   // Handle Google OAuth 2.0 Token Callback (Hash or Redirect)
   if (window.location.hash && window.location.hash.includes("access_token")) {
     const params = new URLSearchParams(window.location.hash.substring(1));
