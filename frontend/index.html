@@ -125,6 +125,10 @@
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
         Path Finder
       </button>
+      <button class="tab" data-view="myprofile" id="myProfileTab" style="display:none;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/></svg>
+        My Profile
+      </button>
     </nav>
 
     <!-- Topbar Actions & User Session Badge -->
@@ -200,6 +204,19 @@
             Select a person from the directory to inspect their full graph profile — company, alma mater, and skill ratings.
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- MY PROFILE VIEW -->
+    <section class="view" id="view-myprofile">
+      <div class="view-head">
+        <div>
+          <h1>My Profile</h1>
+          <p class="subtle">Your personal graph node — company placement, alma mater, skill matrix and network connections.</p>
+        </div>
+      </div>
+      <div style="max-width: 680px; margin: 0 auto;">
+        <div id="myProfileDetail"><div class="empty-state">Loading your profile…</div></div>
       </div>
     </section>
 

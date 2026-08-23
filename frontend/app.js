@@ -109,11 +109,17 @@ async function pollHealth() {
 document.getElementById("tabs").addEventListener("click", (e) => {
   const btn = e.target.closest(".tab");
   if (!btn) return;
+  switchView(btn.dataset.view);
+});
+
+function switchView(viewName) {
   document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
   document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
-  btn.classList.add("active");
-  document.getElementById(`view-${btn.dataset.view}`).classList.add("active");
-});
+  const tab = document.querySelector(`.tab[data-view="${viewName}"]`);
+  if (tab) tab.classList.add("active");
+  const view = document.getElementById(`view-${viewName}`);
+  if (view) view.classList.add("active");
+}
 
 // ---------------------------------------------------------------------------
 // Auth Gateway & User Session Management (Global & Failsafe)
@@ -142,6 +148,7 @@ window.switchAuthTab = function(tab) {
 
 function setSessionUser(user) {
   currentUser = user;
+  const myProfileTab = document.getElementById("myProfileTab");
   if (user) {
     localStorage.setItem("threadline_user", JSON.stringify(user));
     document.getElementById("userSessionBadge").style.display = "flex";
@@ -149,6 +156,7 @@ function setSessionUser(user) {
     document.getElementById("userAvatarSm").textContent = getInitials(user.name);
     document.getElementById("userNameSm").textContent = user.name;
     document.getElementById("authOverlay").classList.remove("active");
+    if (myProfileTab) myProfileTab.style.display = "inline-flex";
 
     // Sync user in forms
     const introFrom = document.getElementById("introFrom");
@@ -160,6 +168,12 @@ function setSessionUser(user) {
     document.getElementById("userSessionBadge").style.display = "none";
     document.getElementById("openAuthModalBtn").style.display = "inline-flex";
     document.getElementById("authOverlay").classList.add("active");
+    if (myProfileTab) myProfileTab.style.display = "none";
+    // If currently on My Profile view, switch back to Directory
+    const myProfileView = document.getElementById("view-myprofile");
+    if (myProfileView && myProfileView.classList.contains("active")) {
+      switchView("directory");
+    }
   }
 }
 
@@ -244,16 +258,9 @@ function initAuthListeners() {
   document.getElementById("userSessionBadge").addEventListener("click", (e) => {
     if (e.target.closest("#logoutBtn")) return;
     if (!currentUser) return;
-
-    // Switch to Directory view tab
-    document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
-    document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
-    const dirTab = document.querySelector('.tab[data-view="directory"]');
-    if (dirTab) dirTab.classList.add("active");
-    document.getElementById("view-directory").classList.add("active");
-
-    // Open logged-in user's personal profile card
-    selectPerson(currentUser.id);
+    // Open the dedicated My Profile view
+    switchView("myprofile");
+    loadMyProfile();
   });
 
   document.getElementById("openAuthModalBtn").addEventListener("click", () => {
@@ -435,33 +442,14 @@ async function loadPeople(term = "", force = false) {
   }
 }
 
-async function selectPerson(id, rowEl) {
-  document.querySelectorAll("#peopleList .list-row").forEach((r) => r.classList.remove("selected"));
-  if (rowEl) {
-    rowEl.classList.add("selected");
-  } else {
-    const rows = document.querySelectorAll("#peopleList .list-row");
-    for (const r of rows) {
-      if (r.getAttribute("data-person-id") === id) {
-        r.classList.add("selected");
-        r.scrollIntoView({ behavior: "smooth", block: "nearest" });
-        break;
-      }
-    }
-  }
-  const detail = document.getElementById("personDetail");
-  detail.innerHTML = '<div class="empty-state">Fetching member profile…</div>';
-  try {
-    const p = await apiGet(`/api/people/${id}`);
-    const initials = getInitials(p.name);
-    const skillChips = (p.skills || [])
-      .filter((s) => s && s.name)
-      .map((s) => `<span class="skill-chip ${s.level || "intermediate"}">${s.name}</span>`)
-      .join("");
+function buildProfileCardHTML(p) {
+  const initials = getInitials(p.name);
+  const skillChips = (p.skills || [])
+    .filter((s) => s && s.name)
+    .map((s) => `<span class="skill-chip ${s.level || "intermediate"}">${s.name}</span>`)
+    .join("");
 
-    const isOwn = (currentUser && p.id === currentUser.id);
-
-    detail.innerHTML = `
+  return `
       <div class="profile-header">
         <div class="profile-avatar-lg">${initials}</div>
         <div class="profile-title-group">
@@ -526,10 +514,45 @@ async function selectPerson(id, rowEl) {
         }
       </div>
     `;
+}
+
+async function loadMyProfile() {
+  if (!currentUser) return;
+  const container = document.getElementById("myProfileDetail");
+  if (!container) return;
+  container.innerHTML = '<div class="empty-state">Fetching your profile…</div>';
+  try {
+    const p = await apiGet(`/api/people/${currentUser.id}`);
+    container.innerHTML = buildProfileCardHTML(p);
+  } catch (err) {
+    errorState(container, err, loadMyProfile);
+  }
+}
+
+async function selectPerson(id, rowEl) {
+  document.querySelectorAll("#peopleList .list-row").forEach((r) => r.classList.remove("selected"));
+  if (rowEl) {
+    rowEl.classList.add("selected");
+  } else {
+    const rows = document.querySelectorAll("#peopleList .list-row");
+    for (const r of rows) {
+      if (r.getAttribute("data-person-id") === id) {
+        r.classList.add("selected");
+        r.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        break;
+      }
+    }
+  }
+  const detail = document.getElementById("personDetail");
+  detail.innerHTML = '<div class="empty-state">Fetching member profile…</div>';
+  try {
+    const p = await apiGet(`/api/people/${id}`);
+    detail.innerHTML = buildProfileCardHTML(p);
   } catch (err) {
     errorState(detail, err, () => selectPerson(id, rowEl));
   }
 }
+
 
 document.getElementById("peopleSearch").addEventListener("input", (e) => {
   clearTimeout(window.__searchDebounce);
@@ -1168,8 +1191,11 @@ document.getElementById("submitEditProfileBtn").addEventListener("click", async 
     renderPeopleList(peopleCache);
     populateSelectors();
 
-    // Select the updated person card
+    // Select the updated person card in Directory view
     selectPerson(currentUser.id);
+    // Also refresh the dedicated My Profile view
+    loadMyProfile();
+
 
     // Refresh Warm Intros & Job Board Matches
     const introBtn = document.getElementById("introGo");
