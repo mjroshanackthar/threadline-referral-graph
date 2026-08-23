@@ -356,53 +356,61 @@
           <textarea id="requestMsgTextarea" rows="4" class="glass-textarea"></textarea>
         </div>
       </div>
-  <!-- MODAL 3: Edit Profile Modal -->
+      <div class="modal-footer">
+        <button id="sendIntroMsgBtn" class="primary-btn glow-btn" style="width:100%;">Send Referral Request</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: Edit Personal Profile Modal -->
   <div id="editProfileModal" class="modal-overlay">
-    <div class="modal-card" style="max-width: 580px;">
+    <div class="modal-card" style="max-width: 520px;">
       <div class="modal-header">
-        <h3 class="modal-title">✏️ Edit Your Personal Profile</h3>
+        <h3 class="modal-title">Edit Personal Profile</h3>
         <button id="closeEditProfileBtn" class="modal-close-btn">&times;</button>
       </div>
-      <div class="modal-body">
-        <p class="modal-sub">Update your profile picture, job title, placement company, alma mater, and skills matrix.</p>
+      <div class="modal-body" style="max-height: 65vh; overflow-y: auto; padding-right: 4px;">
+        <p class="modal-sub">Update your name, headline, current employer, alma mater, and skills recorded in CognoDB.</p>
         
-        <div class="profile-avatar-edit-preview">
-          <div id="editAvatarPreviewInitial" class="avatar-circle avatar-large"></div>
-          <img id="editAvatarPreviewImg" src="" alt="Avatar" class="avatar-circle avatar-large" style="display:none;" />
-          <div class="modal-form-group" style="flex:1;">
-            <label>Profile Image URL</label>
-            <input type="text" id="editAvatarUrlInput" placeholder="https://images.unsplash.com/..." class="glass-input" />
-          </div>
+        <div class="modal-form-group">
+          <label>Full Name *</label>
+          <input type="text" id="editNameInput" placeholder="e.g. Alex Chen" />
         </div>
 
         <div class="modal-form-group">
-          <label>Full Name</label>
-          <input type="text" id="editNameInput" placeholder="Your Full Name" class="glass-input" />
+          <label>Headline / Role</label>
+          <input type="text" id="editHeadlineInput" placeholder="e.g. Senior Software Engineer" />
         </div>
 
         <div class="modal-form-group">
-          <label>Job Title / Headline</label>
-          <input type="text" id="editHeadlineInput" placeholder="e.g. Lead Software Architect" class="glass-input" />
-        </div>
-
-        <div class="modal-grid-2">
-          <div class="modal-form-group">
-            <label>Company</label>
-            <select id="editCompanySelect" class="glass-select"></select>
-          </div>
-          <div class="modal-form-group">
-            <label>Alma Mater (University)</label>
-            <select id="editUniversitySelect" class="glass-select"></select>
-          </div>
+          <label>Current Employer / Company</label>
+          <select id="editCompanySelect"></select>
         </div>
 
         <div class="modal-form-group">
-          <label>Verified Skill Matrix (Comma Separated)</label>
-          <input type="text" id="editSkillsInput" placeholder="React, Node.js, Python, Neo4j, System Architecture" class="glass-input" />
+          <label>Alma Mater / University</label>
+          <select id="editUniSelect"></select>
+        </div>
+
+        <div class="modal-form-group">
+          <label>Skills & Proficiency</label>
+          <div id="editSkillsList" class="skill-chip-row" style="margin-bottom: 14px;"></div>
+          
+          <div style="display: flex; gap: 8px; align-items: center; margin-top: 10px;">
+            <select id="editSkillSelect" style="flex: 2;"></select>
+            <select id="editSkillLevelSelect" style="flex: 1.2;">
+              <option value="beginner">Beginner</option>
+              <option value="intermediate" selected>Intermediate</option>
+              <option value="advanced">Advanced</option>
+            </select>
+            <button id="addSkillToProfileBtn" class="primary-btn btn-sm" style="flex: 0.8; height: 42px;">
+              + Add
+            </button>
+          </div>
         </div>
       </div>
-      <div class="modal-footer">
-        <button id="saveProfileBtn" class="primary-btn glow-btn" style="width:100%;">Save Changes to CognoDB</button>
+      <div class="modal-footer" style="margin-top: 20px;">
+        <button id="submitEditProfileBtn" class="primary-btn glow-btn" style="width:100%;">Save Changes to CognoDB</button>
       </div>
     </div>
   </div>

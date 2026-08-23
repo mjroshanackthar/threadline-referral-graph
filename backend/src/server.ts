@@ -186,29 +186,31 @@ app.post(
   })
 );
 
+app.get(
+  "/api/skills",
+  safe(async (_req, res) => {
+    res.json(await q.listSkills());
+  })
+);
+
 app.post(
-  "/api/people/:id",
+  "/api/people/:id/update",
   safe(async (req, res) => {
-    const id = req.params.id;
-    const { name, headline, picture, companyId, universityId, skills } = req.body as {
+    const { name, headline, companyId, universityId, skills } = req.body as {
       name: string;
       headline: string;
-      picture?: string;
-      companyId?: string;
-      universityId?: string;
-      skills?: Array<{ name: string; level: string }>;
+      companyId: string | null;
+      universityId: string | null;
+      skills: { id: string; level: string }[];
     };
-
-    if (!name || !name.trim()) {
-      res.status(400).json({ error: "Name is required" });
+    if (!name) {
+      res.status(400).json({ error: "Full Name is required" });
       return;
     }
-
     const updated = await q.updatePersonProfile(
-      id,
-      name.trim(),
-      headline || "Network Member",
-      picture,
+      req.params.id,
+      name,
+      headline,
       companyId,
       universityId,
       skills

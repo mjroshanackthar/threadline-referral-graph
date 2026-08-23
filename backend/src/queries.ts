@@ -39,9 +39,9 @@ export async function getPersonProfile(personId: string) {
          OPTIONAL MATCH (p)-[:WORKS_AT]->(c:Company)
          OPTIONAL MATCH (p)-[:STUDIED_AT]->(u:University)
          OPTIONAL MATCH (p)-[hs:HAS_SKILL]->(s:Skill)
-         WITH p, c, u, collect(DISTINCT CASE WHEN s IS NOT NULL THEN {name: s.name, level: hs.level} ELSE null END) AS rawSkills
+         WITH p, c, u, collect(DISTINCT CASE WHEN s IS NOT NULL THEN {id: s.id, name: s.name, level: hs.level} ELSE null END) AS rawSkills
          RETURN p.id AS id, p.name AS name, p.headline AS headline,
-                c.name AS company, u.name AS university,
+                c.name AS company, c.id AS companyId, u.name AS university, u.id AS universityId,
                 [s IN rawSkills WHERE s IS NOT NULL] AS skills`,
         { personId }
       )
@@ -317,99 +317,97 @@ export async function addConnection(fromId: string, toId: string, strength: numb
   }
 }
 
+export async function listSkills() {
+  const session = getSession();
+  try {
+    const result = await session.executeRead((tx) =>
+      tx.run(`MATCH (s:Skill) RETURN s.id AS id, s.name AS name ORDER BY s.name`)
+    );
+    return result.records.map((r) => r.toObject());
+  } finally {
+    await session.close();
+  }
+}
+
 export async function updatePersonProfile(
-  id: string,
+  personId: string,
   name: string,
   headline: string,
-  picture?: string,
-  companyId?: string,
-  universityId?: string,
-  skills?: Array<{ name: string; level: string }>
+  companyId: string | null,
+  universityId: string | null,
+  skills: { id: string; level: string }[]
 ) {
   const session = getSession();
   try {
-    const result = await session.executeWrite(async (tx) => {
+    return await session.executeWrite(async (tx) => {
       // 1. Update basic properties
       await tx.run(
-        `MATCH (p:Person {id: $id})
-         SET p.name = $name,
-             p.headline = $headline,
-             p.avatarUrl = CASE WHEN $picture IS NOT NULL AND $picture <> '' THEN $picture ELSE p.avatarUrl END`,
-        { id, name, headline, picture: picture || null }
+        `MATCH (p:Person {id: $personId})
+         SET p.name = $name, p.headline = $headline`,
+        { personId, name, headline }
       );
 
-      // 2. Update company relationship
+      // 2. Update WORKS_AT relationship (detach old, optionally connect new)
+      await tx.run(
+        `MATCH (p:Person {id: $personId})
+         OPTIONAL MATCH (p)-[r:WORKS_AT]->()
+         DELETE r`,
+        { personId }
+      );
       if (companyId) {
         await tx.run(
-          `MATCH (p:Person {id: $id})
-           OPTIONAL MATCH (p)-[r:WORKS_AT]->(:Company)
-           DELETE r
-           WITH p
-           MATCH (c:Company {id: $companyId})
-           MERGE (p)-[:WORKS_AT]->(c)`,
-          { id, companyId }
+          `MATCH (p:Person {id: $personId}), (c:Company {id: $companyId})
+           MERGE (p)-[:WORKS_AT {role: $headline}]->(c)`,
+          { personId, companyId, headline }
         );
       }
 
-      // 3. Update university relationship
+      // 3. Update STUDIED_AT relationship (detach old, optionally connect new)
+      await tx.run(
+        `MATCH (p:Person {id: $personId})
+         OPTIONAL MATCH (p)-[r:STUDIED_AT]->()
+         DELETE r`,
+        { personId }
+      );
       if (universityId) {
         await tx.run(
-          `MATCH (p:Person {id: $id})
-           OPTIONAL MATCH (p)-[r:STUDIED_AT]->(:University)
-           DELETE r
-           WITH p
-           MATCH (u:University {id: $universityId})
+          `MATCH (p:Person {id: $personId}), (u:University {id: $universityId})
            MERGE (p)-[:STUDIED_AT]->(u)`,
-          { id, universityId }
+          { personId, universityId }
         );
       }
 
-      // 4. Update skills if provided
-      if (skills && Array.isArray(skills)) {
+      // 4. Update HAS_SKILL relationships (detach all, merge new ones)
+      await tx.run(
+        `MATCH (p:Person {id: $personId})
+         OPTIONAL MATCH (p)-[r:HAS_SKILL]->()
+         DELETE r`,
+        { personId }
+      );
+      if (skills && skills.length > 0) {
         await tx.run(
-          `MATCH (p:Person {id: $id})-[r:HAS_SKILL]->(:Skill)
-           DELETE r`,
-          { id }
+          `UNWIND $skills AS skillRow
+           MATCH (p:Person {id: $personId}), (s:Skill {id: skillRow.id})
+           MERGE (p)-[r:HAS_SKILL]->(s)
+           SET r.level = skillRow.level`,
+          { personId, skills }
         );
-
-        for (const s of skills) {
-          if (!s.name || !s.name.trim()) continue;
-          const skillName = s.name.trim();
-          const level = s.level || "Intermediate";
-          const skillId = "sk-" + skillName.toLowerCase().replace(/[^a-z0-9]/g, "-");
-          await tx.run(
-            `MATCH (p:Person {id: $id})
-             MERGE (sk:Skill {id: $skillId})
-             ON CREATE SET sk.name = $skillName
-             MERGE (p)-[hs:HAS_SKILL]->(sk)
-             SET hs.level = $level`,
-            { id, skillId, skillName, level }
-          );
-        }
       }
 
-      // Return full updated profile
-      const res = await tx.run(
-        `MATCH (p:Person {id: $id})
+      // 5. Query and return the updated profile
+      const result = await tx.run(
+        `MATCH (p:Person {id: $personId})
          OPTIONAL MATCH (p)-[:WORKS_AT]->(c:Company)
          OPTIONAL MATCH (p)-[:STUDIED_AT]->(u:University)
-         OPTIONAL MATCH (p)-[hs:HAS_SKILL]->(sk:Skill)
-         WITH p, c, u, collect(DISTINCT {name: sk.name, level: hs.level}) AS rawSkills
-         RETURN p.id AS id,
-                p.name AS name,
-                p.headline AS headline,
-                p.email AS email,
-                p.avatarUrl AS avatarUrl,
-                c.id AS companyId,
-                c.name AS company,
-                u.id AS universityId,
-                u.name AS university,
-                [s IN rawSkills WHERE s.name IS NOT NULL] AS skills`,
-        { id }
+         OPTIONAL MATCH (p)-[hs:HAS_SKILL]->(s:Skill)
+         WITH p, c, u, collect(DISTINCT CASE WHEN s IS NOT NULL THEN {id: s.id, name: s.name, level: hs.level} ELSE null END) AS rawSkills
+         RETURN p.id AS id, p.name AS name, p.headline AS headline,
+                c.name AS company, c.id AS companyId, u.name AS university, u.id AS universityId,
+                [s IN rawSkills WHERE s IS NOT NULL] AS skills`,
+        { personId }
       );
-      return res.records[0]?.toObject();
+      return result.records[0]?.toObject() ?? null;
     });
-    return result;
   } finally {
     await session.close();
   }

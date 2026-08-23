@@ -5,6 +5,7 @@ let peopleCache = [];
 let companiesCache = [];
 let universitiesCache = [];
 let jobsCache = [];
+let skillsCache = [];
 let currentUser = null;
 let pendingIntroContact = null;
 const connectedPairs = new Set();
@@ -416,9 +417,7 @@ async function selectPerson(id, rowEl) {
 
     detail.innerHTML = `
       <div class="profile-header">
-        <div class="profile-avatar-lg">
-          ${p.avatarUrl ? `<img src="${p.avatarUrl}" alt="${p.name}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;" />` : initials}
-        </div>
+        <div class="profile-avatar-lg">${initials}</div>
         <div class="profile-title-group">
           <h2>${p.name}</h2>
           <div class="profile-headline-tag">${p.headline || "Graph Network Member"}</div>
@@ -439,12 +438,12 @@ async function selectPerson(id, rowEl) {
       <div class="section-label">Verified Skill Matrix</div>
       <div class="skill-chip-row" style="margin-bottom:24px;">${skillChips || '<span class="empty-state">No skills recorded</span>'}</div>
 
-      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+      <div style="display:flex; align-items:center; gap:12px;">
         ${
           currentUser && p.id === currentUser.id
             ? `<span class="hop-badge inside">👤 Your Logged-In Profile</span>
-               <button onclick="openEditProfileModal()" class="primary-btn glow-btn btn-sm">
-                 ✏️ Edit Profile
+               <button onclick="openEditProfileModal()" class="primary-btn glow-btn btn-sm" style="margin-left:12px;">
+                 Edit Profile
                </button>`
             : connectedPairs.has((currentUser ? currentUser.id : "") + ":" + p.id) || connectedPairs.has(p.id + ":" + (currentUser ? currentUser.id : ""))
             ? `<span class="hop-badge inside" style="padding:8px 16px; font-size:0.85rem;">✓ Connected in Graph DB</span>
@@ -906,122 +905,147 @@ document.getElementById("sendIntroMsgBtn").addEventListener("click", () => {
 // MODAL 3: Edit Personal Profile Modal
 // ---------------------------------------------------------------------------
 
-async function openEditProfileModal() {
+window.profileEditSkills = [];
+
+window.openEditProfileModal = async function() {
   if (!currentUser) return;
-  const p = await apiGet(`/api/people/${currentUser.id}`).catch(() => currentUser);
 
-  document.getElementById("editNameInput").value = p.name || "";
-  document.getElementById("editHeadlineInput").value = p.headline || "";
-  document.getElementById("editAvatarUrlInput").value = p.avatarUrl || "";
+  try {
+    const p = await apiGet(`/api/people/${currentUser.id}`);
+    document.getElementById("editNameInput").value = p.name || "";
+    document.getElementById("editHeadlineInput").value = p.headline || "";
 
-  // Set avatar preview
-  const prevImg = document.getElementById("editAvatarPreviewImg");
-  const prevInit = document.getElementById("editAvatarPreviewInitial");
-  if (p.avatarUrl) {
-    prevImg.src = p.avatarUrl;
-    prevImg.style.display = "block";
-    prevInit.style.display = "none";
-  } else {
-    prevInit.textContent = getInitials(p.name || "User");
-    prevImg.style.display = "none";
-    prevInit.style.display = "flex";
+    populateEditSelectors();
+
+    document.getElementById("editCompanySelect").value = p.companyId || "";
+    document.getElementById("editUniSelect").value = p.universityId || "";
+
+    window.profileEditSkills = (p.skills || []).map((s) => ({
+      id: s.id,
+      name: s.name,
+      level: s.level || "intermediate"
+    }));
+
+    renderEditSkillsList();
+
+    document.getElementById("editProfileModal").classList.add("active");
+  } catch (err) {
+    alert(`Could not load profile details: ${err.message}`);
   }
+};
 
-  // Live avatar URL input preview update
-  document.getElementById("editAvatarUrlInput").oninput = (e) => {
-    const url = e.target.value.trim();
-    if (url) {
-      prevImg.src = url;
-      prevImg.style.display = "block";
-      prevInit.style.display = "none";
-    } else {
-      prevImg.style.display = "none";
-      prevInit.style.display = "flex";
-    }
-  };
+function populateEditSelectors() {
+  const editCompanySelect = document.getElementById("editCompanySelect");
+  const editUniSelect = document.getElementById("editUniSelect");
+  const editSkillSelect = document.getElementById("editSkillSelect");
 
-  // Populate company dropdown
-  const compSelect = document.getElementById("editCompanySelect");
-  compSelect.innerHTML = '<option value="">None / Independent</option>';
-  for (const c of companiesCache) {
-    const opt = document.createElement("option");
-    opt.value = c.id;
-    opt.textContent = c.name;
-    if (p.companyId === c.id || p.company === c.name) opt.selected = true;
-    compSelect.appendChild(opt);
+  if (companiesCache.length > 0 && editCompanySelect) {
+    editCompanySelect.innerHTML = `<option value="">None / Independent</option>` +
+      companiesCache.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
   }
-
-  // Populate university dropdown
-  const uniSelect = document.getElementById("editUniversitySelect");
-  uniSelect.innerHTML = '<option value="">None / Not Listed</option>';
-  for (const u of universitiesCache) {
-    const opt = document.createElement("option");
-    opt.value = u.id;
-    opt.textContent = u.name;
-    if (p.universityId === u.id || p.university === u.name) opt.selected = true;
-    uniSelect.appendChild(opt);
+  if (universitiesCache.length > 0 && editUniSelect) {
+    editUniSelect.innerHTML = `<option value="">None / Not specified</option>` +
+      universitiesCache.map((u) => `<option value="${u.id}">${u.name}</option>`).join("");
   }
-
-  // Populate skills input comma-separated
-  const skillNames = (p.skills || []).map((s) => (s && s.name ? s.name : s)).join(", ");
-  document.getElementById("editSkillsInput").value = skillNames;
-
-  document.getElementById("editProfileModal").classList.add("active");
+  if (skillsCache.length > 0 && editSkillSelect) {
+    editSkillSelect.innerHTML = skillsCache.map((s) => `<option value="${s.id}">${s.name}</option>`).join("");
+  }
 }
-window.openEditProfileModal = openEditProfileModal;
+
+function renderEditSkillsList() {
+  const list = document.getElementById("editSkillsList");
+  list.innerHTML = "";
+  if (!window.profileEditSkills || window.profileEditSkills.length === 0) {
+    list.innerHTML = `<span class="empty-state" style="padding:0; font-size:0.85rem; color:var(--text-sub);">No skills added yet</span>`;
+    return;
+  }
+
+  window.profileEditSkills.forEach((s) => {
+    const chip = el(
+      "span",
+      `skill-chip ${s.level || "intermediate"}`,
+      `${s.name} <span style="cursor:pointer; margin-left:6px; font-weight:bold; opacity:0.8;" onclick="removeSkillLocal('${s.id}')">&times;</span>`
+    );
+    list.appendChild(chip);
+  });
+}
+
+window.removeSkillLocal = function(skillId) {
+  window.profileEditSkills = window.profileEditSkills.filter((s) => s.id !== skillId);
+  renderEditSkillsList();
+};
+
+document.getElementById("addSkillToProfileBtn").addEventListener("click", () => {
+  const skillSelect = document.getElementById("editSkillSelect");
+  const skillId = skillSelect.value;
+  const level = document.getElementById("editSkillLevelSelect").value;
+
+  if (!skillId) return;
+
+  const skillObj = skillsCache.find((s) => s.id === skillId);
+  if (!skillObj) return;
+
+  if (window.profileEditSkills.some((s) => s.id === skillId)) {
+    alert("This skill is already added. Remove it first to change level.");
+    return;
+  }
+
+  window.profileEditSkills.push({
+    id: skillId,
+    name: skillObj.name,
+    level: level
+  });
+
+  renderEditSkillsList();
+});
 
 document.getElementById("closeEditProfileBtn").addEventListener("click", () => {
   document.getElementById("editProfileModal").classList.remove("active");
 });
 
-document.getElementById("saveProfileBtn").addEventListener("click", async () => {
+document.getElementById("submitEditProfileBtn").addEventListener("click", async () => {
   if (!currentUser) return;
-  const btn = document.getElementById("saveProfileBtn");
+
   const name = document.getElementById("editNameInput").value.trim();
   const headline = document.getElementById("editHeadlineInput").value.trim();
-  const picture = document.getElementById("editAvatarUrlInput").value.trim();
-  const companyId = document.getElementById("editCompanySelect").value;
-  const universityId = document.getElementById("editUniversitySelect").value;
-  const rawSkills = document.getElementById("editSkillsInput").value;
+  const companyId = document.getElementById("editCompanySelect").value || null;
+  const universityId = document.getElementById("editUniSelect").value || null;
+  const skills = window.profileEditSkills.map((s) => ({ id: s.id, level: s.level }));
 
   if (!name) {
-    alert("Name cannot be empty.");
+    alert("Full Name is required.");
     return;
   }
 
-  const skillsArr = rawSkills
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .map((s) => ({ name: s, level: "Intermediate" }));
-
-  btn.textContent = "Saving to CognoDB...";
+  const btn = document.getElementById("submitEditProfileBtn");
+  btn.textContent = "Saving Profile to CognoDB...";
   btn.disabled = true;
 
   try {
-    const updated = await apiPost(`/api/people/${currentUser.id}`, {
+    const updatedUser = await apiPost(`/api/people/${currentUser.id}/update`, {
       name,
       headline,
-      picture,
       companyId,
       universityId,
-      skills: skillsArr
+      skills
     });
 
+    // Update global state and localStorage session
+    setSessionUser(updatedUser);
+
+    showToast("Profile updated successfully in graph!", "✨");
     document.getElementById("editProfileModal").classList.remove("active");
 
-    // Update session and caches
-    const fullUser = { ...currentUser, ...updated };
-    setSessionUser(fullUser);
+    // Re-fetch all people to update directory cache
+    await loadPeople();
+    populateSelectors();
 
-    const idx = peopleCache.findIndex((p) => p.id === currentUser.id);
-    if (idx !== -1) {
-      peopleCache[idx] = fullUser;
-      renderPeopleList(peopleCache);
-    }
-
-    showToast("Profile Updated Successfully in CognoDB!", "✓");
+    // Select the updated person card
     selectPerson(currentUser.id);
+
+    // Refresh Warm Intros
+    const introBtn = document.getElementById("introGo");
+    if (introBtn) introBtn.click();
   } catch (err) {
     alert(`Failed to save profile: ${err.message}`);
   } finally {
@@ -1043,11 +1067,13 @@ async function boot() {
     const companies = await apiGet("/api/companies").catch(() => []);
     const universities = await apiGet("/api/universities").catch(() => []);
     const jobs = await apiGet("/api/jobs").catch(() => []);
+    const skills = await apiGet("/api/skills").catch(() => []);
 
     if (people.length) peopleCache = people;
     if (companies.length) companiesCache = companies;
     if (universities.length) universitiesCache = universities;
     if (jobs.length) jobsCache = jobs;
+    if (skills.length) skillsCache = skills;
 
     // Update Top Stats Bar
     document.getElementById("statMembers").textContent = peopleCache.length || 20;
