@@ -385,8 +385,8 @@ function renderPeopleList(people) {
   }
 }
 
-async function loadPeople(term = "") {
-  if (!term && peopleCache.length > 0) {
+async function loadPeople(term = "", force = false) {
+  if (!term && peopleCache.length > 0 && !force) {
     renderPeopleList(peopleCache);
     return;
   }
@@ -394,10 +394,10 @@ async function loadPeople(term = "") {
   list.innerHTML = '<div class="empty-state">Searching graph...</div>';
   try {
     const people = await apiGet(`/api/people?q=${encodeURIComponent(term)}`);
-    if (!term) peopleCache = people;
+    if (!term || force) peopleCache = people;
     renderPeopleList(people);
   } catch (err) {
-    errorState(list, err, () => loadPeople(term));
+    errorState(list, err, () => loadPeople(term, force));
   }
 }
 
@@ -1114,16 +1114,38 @@ document.getElementById("submitEditProfileBtn").addEventListener("click", async 
     showToast("Profile updated successfully in graph!", "✨");
     document.getElementById("editProfileModal").classList.remove("active");
 
-    // Re-fetch all people to update directory cache
-    await loadPeople();
+    // Re-fetch all people, companies, universities, and skills to update all caches
+    const [people, companies, universities, skillsList] = await Promise.all([
+      apiGet("/api/people").catch(() => []),
+      apiGet("/api/companies").catch(() => []),
+      apiGet("/api/universities").catch(() => []),
+      apiGet("/api/skills").catch(() => [])
+    ]);
+
+    if (people.length) peopleCache = people;
+    if (companies.length) companiesCache = companies;
+    if (universities.length) universitiesCache = universities;
+    if (skillsList.length) skillsCache = skillsList;
+
+    // Update Top Stats Bar
+    document.getElementById("statMembers").textContent = peopleCache.length;
+    document.getElementById("statCompanies").textContent = companiesCache.length;
+
+    renderPeopleList(peopleCache);
     populateSelectors();
 
     // Select the updated person card
     selectPerson(currentUser.id);
 
-    // Refresh Warm Intros
+    // Refresh Warm Intros & Job Board Matches
     const introBtn = document.getElementById("introGo");
     if (introBtn) introBtn.click();
+
+    // Re-render selected job details if active
+    const selectedJobCard = document.querySelector("#jobsList .job-card.selected");
+    if (selectedJobCard) {
+      selectedJobCard.click();
+    }
   } catch (err) {
     alert(`Failed to save profile: ${err.message}`);
   } finally {
