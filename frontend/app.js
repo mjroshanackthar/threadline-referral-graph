@@ -661,23 +661,10 @@ async function selectJob(job, cardEl) {
       </div>
 
       ${ownMatchHtml}
-
-      ${(() => {
-        // Only show the full talent pool if:
-        // 1. No one is logged in (anonymous browsing), OR
-        // 2. The logged-in user works at the hiring company (recruiter view)
-        const isRecruiter = !currentUser || (currentUser.company && job.companyName &&
-          currentUser.company.trim().toLowerCase() === job.companyName.trim().toLowerCase());
-        if (!isRecruiter) return "";
-        return `<div class="section-label" style="margin-bottom:12px;">👥 Network Talent Pool (Ranked Candidates)</div>`;
-      })()}
     `;
 
-    // Only append candidate rows for recruiters (or anonymous users)
-    const isRecruiterView = !currentUser || (currentUser.company && job.companyName &&
-      currentUser.company.trim().toLowerCase() === job.companyName.trim().toLowerCase());
-
-    if (isRecruiterView) {
+    // Only show the full talent pool when no user is logged in (anonymous/demo mode)
+    if (!currentUser) {
       for (const c of candidates) {
         const pct = Math.round((c.skillCoverage || 0) * 100);
         const hopVal = unwrapNum(c.closestHop);
@@ -699,7 +686,7 @@ async function selectJob(job, cardEl) {
           "div",
           "candidate-row",
           `<div>
-             <div class="candidate-name">${c.name} ${currentUser && c.personId === currentUser.id ? '<span style="color:#00b4d8; font-size:0.75rem; font-weight:bold;">(You)</span>' : ""}</div>
+             <div class="candidate-name">${c.name}</div>
              <div class="candidate-sub">${c.headline || ""} · Skills: ${(c.matchedSkills || []).join(", ")}</div>
            </div>
            <div style="display:flex; align-items:center; gap:16px;">
@@ -712,6 +699,12 @@ async function selectJob(job, cardEl) {
         );
         detail.appendChild(row);
       }
+
+      // Add the header label before first candidate row (prepend)
+      const label = el("div", "section-label", "👥 Network Talent Pool (Ranked Candidates)");
+      label.style.marginBottom = "12px";
+      label.style.marginTop = "8px";
+      detail.insertBefore(label, detail.querySelector(".candidate-row"));
     }
 
   } catch (err) {
