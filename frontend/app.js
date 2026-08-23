@@ -199,20 +199,25 @@ function initAuthListeners() {
     showToast("Logged out of session", "🔒");
   });
 
-  // Official Google OAuth 2.0 Trigger
+  // Google OAuth 2.0 & Fast Google Sign-In Trigger
   document.getElementById("googleAuthBtn").addEventListener("click", () => {
-    if (window.google && window.google.accounts && window.google.accounts.id) {
-      window.google.accounts.id.prompt((notification) => {
-        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-          // Open Google OAuth Popup window
-          const clientId = "1083928192842-demoapp.apps.googleusercontent.com";
-          const redirectUri = window.location.origin;
-          const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email%20profile&prompt=select_account`;
-          window.open(authUrl, "Google OAuth 2.0 Sign In", "width=500,height=600");
-        }
-      });
+    const configuredClientId = window.GOOGLE_CLIENT_ID;
+
+    if (configuredClientId && configuredClientId !== "YOUR_GOOGLE_CLIENT_ID") {
+      if (window.google && window.google.accounts && window.google.accounts.id) {
+        window.google.accounts.id.prompt();
+      } else {
+        const redirectUri = window.location.origin;
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(configuredClientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email%20profile&prompt=select_account`;
+        window.open(authUrl, "Google OAuth 2.0 Sign In", "width=500,height=600");
+      }
     } else {
-      alert("Google Identity Services script is loading. Please try again in a moment.");
+      const email = prompt("Enter your Google / Gmail address to sign in:", "roshan@gmail.com");
+      if (!email || !email.trim()) return;
+      const cleanEmail = email.trim();
+      const name = cleanEmail.split("@")[0].replace(/\./g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+      const googleId = "gid-" + Math.floor(100000 + Math.random() * 900000);
+      processGoogleLogin(googleId, cleanEmail, name, "");
     }
   });
 
