@@ -163,6 +163,21 @@ function setSessionUser(user) {
   }
 }
 
+window.handleGoogleToken = function(token) {
+  fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+  .then((res) => res.json())
+  .then((info) => {
+    if (info.email) {
+      const googleId = info.sub || "gid-" + Math.floor(100000 + Math.random() * 900000);
+      processGoogleLogin(googleId, info.email, info.name || info.email.split("@")[0], info.picture || "");
+      history.replaceState(null, "", window.location.pathname);
+    }
+  })
+  .catch((err) => console.error("Google UserInfo fetch failed:", err));
+};
+
 function initAuthListeners() {
   const saved = localStorage.getItem("threadline_user");
   if (saved) {
@@ -182,18 +197,13 @@ function initAuthListeners() {
     const params = new URLSearchParams(window.location.hash.substring(1));
     const token = params.get("access_token");
     if (token) {
-      fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      .then((res) => res.json())
-      .then((info) => {
-        if (info.email) {
-          const googleId = info.sub || "gid-" + Math.floor(100000 + Math.random() * 900000);
-          processGoogleLogin(googleId, info.email, info.name || info.email.split("@")[0], info.picture || "");
-          history.replaceState(null, "", window.location.pathname);
-        }
-      })
-      .catch((err) => console.error("Google UserInfo fetch failed:", err));
+      if (window.opener && typeof window.opener.handleGoogleToken === "function") {
+        window.opener.handleGoogleToken(token);
+        window.close();
+        return;
+      } else {
+        handleGoogleToken(token);
+      }
     }
   }
 
