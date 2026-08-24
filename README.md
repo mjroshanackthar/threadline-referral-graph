@@ -5,8 +5,8 @@ who you know, who *they* know, and how that chain connects you to an open
 role at a target company. Built for the Wexa AI take-home assignment on
 **CognoDB**.
 
-Live demo: `<add your hosted URL here>`
-Screen recording: `<add your video link here>`
+Live demo: https://threadline-referral-graph.onrender.com/
+
 
 ---
 
