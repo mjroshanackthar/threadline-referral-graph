@@ -182,4 +182,13 @@ here needs a graph, but the three above genuinely do.
 
 ## Screenshots
 
-`<add screenshots of the Directory, Job Board, and Warm Intros tabs here>`
+
+<img width="640" height="318" alt="Screenshot 2026-08-25 112744" src="https://github.com/user-attachments/assets/33ef7e39-32da-4e4d-becc-de841c626849" />
+<img width="640" height="318" alt="Screenshot 2026-08-25 112722" src="https://github.com/user-attachments/assets/5026a80f-a4b8-4be2-9f58-1b653de1474f" />
+<img width="640" height="318" alt="Screenshot 2026-08-25 112657" src="https://github.com/user-attachments/assets/6f2dbd57-1c2a-4f22-8efb-062cdc4acbd2" />
+<img width="640" height="318" alt="Screenshot 2026-08-25 112640" src="https://github.com/user-attachments/assets/0a45897d-c54b-4755-8ba3-8ca57aaa4d9e" />
+<img width="640" height="318" alt="Screenshot 2026-08-25 112624" src="https://github.com/user-attachments/assets/1980c262-f64a-48f9-a7dd-df445357ee8f" />
+<img width="640" height="318" alt="Screenshot 2026-08-24 094442" src="https://github.com/user-attachments/assets/15dc0a99-8bf8-43b8-b9a1-fc2bcf5ac38b" />
+<img width="640" height="318" alt="Screenshot 2026-08-24 020843" src="https://github.com/user-attachments/assets/f9aa0493-a8a1-4e1a-993f-c8bd9b8bdfff" />
+
+
